@@ -1,0 +1,130 @@
+#!/usr/bin/perl -w
+
+use strict;
+use Getopt::Long;
+use Math::Round;
+use SSDS_pipeline;
+
+GetOptions ('g=s'           => \(my $genome),
+    	    'out=s'	    => \(my $outBAMName),
+            'forceSort+'    => \(my $forceS),
+            'forceReorder+' => \(my $forceRO),
+            'noRM+'  	    => \(my $noRM),
+            'v+'            => \(my $verbose));
+
+my (@in) = @ARGV;
+
+die ('You cannot provide an output BAM name if you are sorting > 1 BAM file') if ($outBAMName && ($#in > 1));
+die ('You MUST provide a genome (--g)') unless ($genome);
+die ('You MUST provide at least one BAM file') unless (@in);
+
+$genome = lc($genome);
+## Sort all versions of SNP transformed mm10 the same way
+#$genome = "mm10" if ($genome =~ /mm10/);
+
+open STDERR, '>/dev/null' unless($verbose);
+
+my (@cmd);
+my ($PicardPath,$GenomesPath,$samtoolsPath,$TmpPath,$ssPipelinePath,$genome_fa,$genome_idx) = genPaths($genome);
+
+##############################################################################################################################################################################
+
+my $rmList;
+
+for my $in(@in){
+        
+    ## SAM -> BAM conversion
+    if ($in =~ /.sam/){
+        my $initBAM = $in; $initBAM =~ s/\.sam/.bam/;
+        die ("sortBAM Died [0]. Something odd !!! Outfile == Infile ... [$initBAM == $in] ...\n") if ($initBAM eq $in);
+        sysAndPrint('java -jar '.$PicardPath.'\picard.jar SamFormatConverter VALIDATION_STRINGENCY=LENIENT TMP_DIR='.$TmpPath.' I='.$in.' O='.$initBAM,$verbose);
+        $in = $initBAM;
+        $rmList .= $initBAM.' ';
+    }
+    
+    my $so = `$samtoolsPath/samtools view -h $in |head -n 20 |grep coordinate`;
+    
+    if ((not $so) || $forceS){
+        my $out = $in; $out =~ s/\.S*bam/\.SSbam/;
+        die ("sortBAM Died [1]. Something odd !!! Outfile == Infile ... [$out == $in] ...\n") if ($out eq $in);
+        sysAndPrint('java -jar '.$PicardPath.'\picard.jar SortSam VALIDATION_STRINGENCY=LENIENT TMP_DIR='.$TmpPath.' I='.$in.' O='.$out.' SO=coordinate',$verbose);
+        $in = $out;
+        $rmList .= $out.' ';
+    }
+    
+    if ((not checkBAMorder($in,$genome_idx)) || $forceRO){
+        my $out = $in; $out =~ s/\.S*S*bam/.sorted.bam/;
+        die ("sortBAM Died [2]. Something odd !!! Outfile == Infile ... [$out == $in] ...\n") if ($out eq $in);
+        sysAndPrint('java -jar '.$PicardPath.'\picard.jar ReorderSam ALLOW_INCOMPLETE_DICT_CONCORDANCE=true VALIDATION_STRINGENCY=LENIENT TMP_DIR='.$TmpPath.' I= '.$in.' O= '.$out.' R= '.$genome_fa,$verbose);
+	
+	## KB June 06 2014: allow specific renaming of output
+	if ($outBAMName){
+		sysAndPrint('mv '.$out.' '.$outBAMName,$verbose);
+	}
+
+    }else{
+        my $out = $in; $out =~ s/\.S*S*bam/.sorted.bam/;
+        die ("sortBAM Died [3]. Something odd !!! Outfile == Infile ... [$out == $in] ...\n") if ($out eq $in);
+
+        sysAndPrint('mv '.$in.' '.$out,$verbose);	
+	
+	## KB June 06 2014: allow specific renaming of output
+	if ($outBAMName){
+		sysAndPrint('mv '.$out.' '.$outBAMName,$verbose);
+		sysAndPrint($samtoolsPath.'/samtools index '.$outBAMName,$verbose);
+	}else{
+		sysAndPrint($samtoolsPath.'/samtools index '.$out,$verbose);
+	}
+    }
+
+}
+
+unless ($noRM){
+	sysAndPrint('rm '.$rmList,$verbose);
+}
+
+################################################################################
+sub checkBAMorder{
+	my ($bamFile,$idxFile) = @_;
+	
+	my @Obam = getBAMorder($bamFile);
+	my @Oidx = getIDXorder($idxFile);
+	
+	return 0 if ($#Oidx ne $#Obam);
+	
+	for my $i(0..$#Oidx){
+		return 0 if ($Oidx[$i] ne $Obam[$i]);	
+	}
+	
+	return 1;
+}
+
+################################################################################
+sub getBAMorder{
+	my ($BF) = shift;
+	
+	my @ret;
+	
+	for my $l (`$samtoolsPath/samtools view -H $BF`){
+		$l =~ /SN:(\S+)/; my $csNM = $1;
+		$l =~ /LN:(\S+)/; my $csLN = $1;
+		push @ret, $csNM.$csLN if($csNM);
+	}
+	
+	return @ret;
+}
+
+################################################################################
+sub getIDXorder{
+	my ($IF) = shift;
+	
+	my @ret;
+	open IDXINFILE, $IF;
+	while (<IDXINFILE>){
+		my @l = split(/\t/,$_);
+		
+		push @ret, $l[0].$l[1];
+	}
+	
+	return @ret;
+}

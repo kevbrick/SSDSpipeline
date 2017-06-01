@@ -1,0 +1,127 @@
+#!/usr/bin/perl
+use strict; 
+use Getopt::Long;
+use SSDS_pipeline;
+
+GetOptions ('g=s'         	=> \(my $genome),
+            'bam=s'       	=> \(my $bam),
+			'bamAligned+' 	=> \(my $bamAligned),
+			'fq1=s'	  		=> \(my $fastqR1),
+			'fq2=s'	  		=> \(my $fastqR2),
+            'n=i'         	=> \(my $nCores = 12),
+			'r1BP=i'	 	=> \(my $read1BP = 36),
+			'r2BP=i'	 	=> \(my $read2BP = 40),
+			'splitSz=s'   	=> \(my $splitSize = 20000000),
+            'outdir=s'    	=> \(my $outdir),
+            'outname=s'	  	=> \(my $outname),
+            'sample=s'    	=> \(my $sampleID),
+            'date=s'      	=> \(my $sampleDate),
+            'lane=s'      	=> \(my $sampleLane),
+            'bwaVers=s'   	=> \(my $BWAversion = '0.7'), ## alternative is 0.5
+            'p=s'    	  	=> \(my $partition),
+            'v+'          	=> \(my $verbose),
+            'h+'          	=> \(my $h),
+            'help+'       	=> \(my $help));
+
+## CHECK ARGS
+my $errMSG ;
+$errMSG .= "BWA_RA is only available for --bwaVers 0.5 or 0.7 [not $BWAversion]\n" 	unless ($BWAversion !~ s/^(0.[57]).+$/$1/);
+$errMSG .= "Please specify full path to BAM file [$bam]\n" 							if     ($bam && $bam !~ /\//);
+$errMSG .= "BAM file [$bam] does not exist\n"			 							if     ($bam && not (-e $bam));
+$errMSG .= "Must provide --outname with aligned BAM file\n"  			        	if     ($bamAligned && not ($outname));
+$errMSG .= "Must provide --outDir with aligned BAM file\n"  			        	if     ($bamAligned && not ($outdir));
+$errMSG .= "Please specify full path to Read1 FastQ file [$fastqR1]\n" 				if     ($fastqR1 && $fastqR1!~ /\//);
+$errMSG .= "Read1 FastQ file [$fastqR1] does not exist\n"							if     ($fastqR1 && not (-e $fastqR1));
+$errMSG .= "Please specify full path to Read2 FastQ file [$fastqR2]\n" 				if     ($fastqR2 && $fastqR2 !~ /\//);
+$errMSG .= "Read2 FastQ file [$fastqR2] does not exist\n"							if     ($fastqR2 && not (-e $fastqR2));
+$errMSG .= "No valid inputs ... specify --bam or --fq1\n"							unless (-e $fastqR1 || -e $bam);
+
+unless ($sampleID && $sampleDate && $sampleLane){
+	print STDERR 'No sample / date / lane info provided ... attempting to determine from BAM name'."\n";
+	$bam =~ /(\d{6})_\d{4}_(\d+)_\S{6}_(\S+?)\./;
+	($sampleDate, $sampleLane, $sampleID) = ($1,$2,$3);
+	print STDERR "Sample name: $sampleID\n";
+	print STDERR "Sample date: $sampleDate\n";
+	print STDERR "Sample lane: $sampleLane\n";
+}
+
+$errMSG .= "Please specify read group data (--sample --date --lane)\n" 		unless ($sampleID && $sampleDate && $sampleLane);
+$errMSG .= "Please set the correct FASTXTOOLKIT path \n" 			        unless (-e $ENV{'SSDSFASTXPATH'}.'/fastx_trimmer');
+
+## PRINT HELP OR ERRORS
+if ($h || $help){
+	printARGS();
+	exit();
+}
+
+if ($errMSG){
+	printARGS($errMSG);
+}
+
+$outdir = $outdir?$outdir.'/':($bam?$bam:$fastqR1);
+$outdir =~ s/^(.+\/).*/$1/;
+$outdir =~ s/\/\//\//;
+printARGS("EXITING: Output folder [$outdir] does not exist.\n")				unless (-d $outdir);
+
+my $gOK = $genome?$genome:checkSpecies($bam?$bam:$fastqR1);
+$genome = ($genome?$genome:$gOK);
+printARGS("EXITING: BAM genome doesn't match genome provided [$genome ... v ... $gOK].\n") 	unless ($genome eq $gOK);
+
+my ($PicardPath,$GenomesPath,$samtoolsPath,$TmpPath,$ssPipelinePath,$genome_fa,$idx) = genPaths($genome,$BWAversion,1);
+printARGS("EXITING: Sorry, genome [$genome] NOT supported ... check the genomes folder.\n") 	unless (-e $genome_fa);
+
+## CREATE BATCH FILE FOR EXEC
+system('mkdir .ssPipeline') unless (-d '.ssPipeline');
+my $runScript = '.ssPipeline/ssPL_'.int(rand()*100000000000000).'.sh';
+
+open SWARMFILE, '>', $runScript;
+
+if ($fastqR1){
+	print SWARMFILE "perl $ssPipelinePath/SSDS_pipeline.pl ".($bamAligned?" --bamAligned --outname $outname ":"")." --g $genome --fq1 $fastqR1 --fq2 $fastqR2 --n $nCores --r1BP $read1BP --r2BP $read2BP --splitSz $splitSize --outDir $outdir --sample $sampleID --date $sampleDate --lane $sampleLane --bwaVers 0.7 --v --run";
+}else{
+	print SWARMFILE "perl $ssPipelinePath/SSDS_pipeline.pl ".($bamAligned?" --bamAligned --outname $outname ":"")." --g $genome --bam $bam --n $nCores --r1BP $read1BP --r2BP $read2BP --splitSz $splitSize --outDir $outdir --sample $sampleID --date $sampleDate --lane $sampleLane --bwaVers 0.7 --v --run";
+}
+
+close SWARMFILE;
+
+## RUN SSPIPELINE START TO END
+my $mem = ($nCores<=32?32:$nCores);
+
+#system("swarm -f $runScript -t $nCores -g $mem --gres=lscratch:400 --time=72:03:00 --module picard --exclusive ".($partition?" --partition=$partition":""));
+
+sysAndPrint("sh $runScript");
+
+################################################################################################################
+sub printARGS{
+	my $msg = shift;
+
+	print STDERR "\n\n";
+	if ($msg){
+		print STDERR "********************************************************************************\n";
+		print STDERR "INVALID ARGUMENTS: \n";
+		print STDERR "--------------------------------------------------------------------------------\n";
+		print STDERR $msg."\n";
+		print STDERR "********************************************************************************\n";
+	}
+
+	print STDERR "run_ssDNAPipeline.pl : Command line arguments: \n";
+	print STDERR "--------------------------------------------------------------------------------\n";
+	print STDERR "--g           : genome             (from genomes folder) *\n";
+	print STDERR "--bam         : bam file           (EITHER --bam or --fq1 & --fq2 are required) *\n";
+	print STDERR "--fq1         : read 1 fastq file  (EITHER --bam or --fq1 & --fq2 are required) *\n";
+	print STDERR "--fq2         : read 2 fastq file  (EITHER --bam or --fq1 & --fq2 are required) *\n";
+	print STDERR "--n           : # of threads       (default = 12) \n";
+	print STDERR "--r1BP        : trim read1 to N bp (default = 36) \n";
+	print STDERR "--r2BP        : trim read2 to N bp (default = 40) \n";
+	print STDERR "--splitSz     : decrease value, reduce memory footprint (default = 20000000) \n";
+	print STDERR "--outdir      : output folder      (default to bam/fastq folder) \n";
+	print STDERR "--sample      : sample name        (no spaces) * \n";
+	print STDERR "--date        : sample date        (no spaces) * \n";
+	print STDERR "--lane        : sample lane        (no spaces; use dummy # if n/a) * \n";
+	print STDERR "--bwaVers     : BWA version        (0.5 or 0.7 [default]) \n";
+	print STDERR "--p           : define biowulf partition to use (i.e. niddk)    \n";
+	print STDERR "--v           : verbose mode    \n";
+	print STDERR "--h / --help  : show this HELP   \n\n\n";
+	exit; 
+}
+

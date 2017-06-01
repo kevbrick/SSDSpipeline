@@ -1,0 +1,50 @@
+#!/usr/bin/perl
+
+## Simple script to merge BAM headers and retain all @RG and @PG info
+## The script requires that the headers are identical with the 
+## exception of @RG lines.
+
+use strict;
+
+my $headerFile = shift;
+
+my @bams = @ARGV;
+
+my (@RGs, @PGs, @ref, $header);
+for my $b(@bams){
+	open my $PIPE, '-|', $ENV{'SSDSSAMTOOLSPATH'}.'/samtools view -H '.$b;
+
+	my $l = 0;
+
+	while (<$PIPE>){
+		chomp;
+		unless ($ref[$l]){
+			$ref[$l]   = $_ ;
+			$header .= $_."\n" unless ($_ =~ /^\@(RG|PG)/);
+		}
+		if ($_ =~ /^\@(PG|RG)/){
+			if ($_ =~ /^\@RG/){			
+				push @RGs, $_;
+			}else{
+				push @PGs, $_;			
+			}
+		}else{
+			die ($ref[$l]." ne ".$_."\nHeaders DO NOT match ... Exiting ... ") unless($ref[$l] eq $_ || $ref[$l] =~ /^\@PG/);
+		}
+		$l++;
+	}
+	
+}
+
+
+for my $rg (@RGs){
+	$header .= "$rg\n";
+}
+
+for my $pg (@PGs){
+#	$header .= "$pg\n";
+}
+
+open OUT, '>', $headerFile; 
+print OUT $header;
+close OUT; 

@@ -1,0 +1,185 @@
+#!/usr/bin/perl -w
+
+use strict;
+use Getopt::Long;
+use Math::Round;
+use SSDS_pipeline qw (genPaths);
+
+use Getopt::Long;
+
+GetOptions ('g=s'          	=> \(my $genome),
+            'noErase+'     	=> \(my $noErase),
+            'justAligned+' 	=> \(my $justAligned),
+    	    'withIDX+'     	=> \(my $withIDX),
+    	    'list+'        	=> \(my $list),
+			'mh+'	   		=> \(my $mergeHeaders),
+			'md+'	   		=> \(my $markDuplicates),
+			'allBAMs+'	   	=> \(my $allBAMs),
+    	    'h=s'          	=> \(my $newHeader),
+    	    'sort+'        	=> \(my $forceSort),
+    	    'f+'           	=> \(my $forceOutputOverwrite),
+            'v+'           	=> \(my $verbose));
+
+die ("\n## ERROR ##\nNew header file does not exist (--h)\n") if ($newHeader && not (-e $newHeader));
+die ("\n## ERROR ##\nNew header file must be SAM format (--h: $newHeader)\n") if ($newHeader && $newHeader !~ /sam/);
+
+$genome = lc($genome);
+my ($PicardPath,$GenomesPath,$samtoolsPath,$TmpPath,$ssPipelinePath,$genome_fa,$genome_idx,$bwaIDX) = genPaths($genome,'0.7');
+
+my $tmpFolder  = $TmpPath;
+
+open STDERR, '>/dev/null' unless($verbose);
+
+my ($outF,@inBAMs) = @ARGV;
+
+if ($allBAMs){
+	@inBAMs = ();
+	opendir(DIR,'.');
+	while (my $bamFl = readdir(DIR)){
+		push @inBAMs, $bamFl if ($bamFl =~ /\.bam/);
+	}
+}
+
+if (not ($outF)){
+print <<FL
+
+mergeBAMfiles --g {genome} [options] <outfile> <infile1> <infile2> .... <infile_n>
+
+FL
+
+}
+
+### KB 8/8/2013 - allow merge header generation ###
+if ($mergeHeaders){
+	my $rhHeader    = "$tmpFolder\/newHeader_".int(rand()*10000000).".sam";
+	my $reHeaderCMD = $ssPipelinePath."/mergeBAMheaders $rhHeader @inBAMs"; 
+	print $reHeaderCMD."\n";
+	system($reHeaderCMD);
+	$newHeader = $rhHeader;
+}
+### KB 8/8/2013 - END CHANGES ###
+
+exit if (not ($outF));
+die ("Output BAM file exists [$outF]. Pass --f parameter to force overwrite") if (not($forceOutputOverwrite) && (-e ($outF)));
+
+my $listFile = $outF; $listFile =~ s/bam/mergedFiles.list/;
+
+open LIST, '>', $listFile if ($list);
+
+my $cmd    = $samtoolsPath.'/samtools merge '.($newHeader?"-h $newHeader":"").' '.($forceOutputOverwrite?'-f ':'').$outF.' ';
+my $idxCmd = $samtoolsPath.'/samtools index '.$outF;
+my $rmCmd  = 'rm ';
+my $singleCmd;
+
+for my $in(@inBAMs){
+	
+	if ($justAligned){
+        	my $out = $in; $out =~ s/\.S*[bs]am/\.justAln.bam/; $out =~ s/^.+\///; $out = $tmpFolder.'/'.$out;
+	        print($samtoolsPath.'/samtools view -F 4 -bh '.$in.' >'.$out."\n") if ($verbose);
+	        system($samtoolsPath.'/samtools view -F 4 -bh '.$in.' >'.$out);
+	        $in = $out;
+	        $rmCmd .= $in.' ';	
+	}    
+
+    my $so = `$samtoolsPath/samtools view -h $in |head -n 20 |grep coordinate`;
+    
+    if ((not $so) || $forceSort){
+        my $out = $in; $out =~ s/\.S*[bs]am/\.SSbam/;$out =~ s/^.+\///; $out = $tmpFolder.'/'.$out;
+        print('java -jar '.$PicardPath.'/picard.jar SortSam  I='.$in.' O='.$out.' SO=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR='.$TmpPath."\n") if ($verbose);
+        system('java -jar '.$PicardPath.'/picard.jar SortSam  I='.$in.' O='.$out.' SO=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR='.$TmpPath);
+        $in = $out;
+        $rmCmd .= $in.' ';
+    }
+    
+    my $out = $in;
+   
+    if (not checkBAMorder($in,$genome_idx)){
+        $out =~ s/\.S*S*[sb]am/.RO.bam/; $out =~ s/^.+\///; $out = $tmpFolder.'/'.$out;
+
+        print($samtoolsPath.'/samtools index '.$in." \n") if ($verbose);
+        system($samtoolsPath.'/samtools index '.$in);
+        
+        print('java -jar '.$PicardPath.'/picard.jar ReorderSam VALIDATION_STRINGENCY=LENIENT TMP_DIR='.$TmpPath.' I='.$in.' O='.$out.' R='.$genome_fa."\n") if ($verbose);
+        system('java -jar '.$PicardPath.'/picard.jar ReorderSam VALIDATION_STRINGENCY=LENIENT TMP_DIR='.$TmpPath.' I='.$in.' O='.$out.' R='.$genome_fa);
+        $rmCmd .= $out.' ';
+    }
+        
+    $cmd       .= $out.' ';
+    $singleCmd = "cp $out $outF";
+}
+
+### If there's only one file, copy it, don't try to merge with anything
+if ($#inBAMs < 1 && $inBAMs[0]){
+	$cmd = $singleCmd;
+}
+ 
+print $cmd."\n" if ($verbose);
+print LIST $cmd."\n" if ($list);
+
+system($cmd);
+system($idxCmd) if ($withIDX);
+
+### KB 8/8/2013 - allow markDuplicates @ end ###
+if ($markDuplicates){
+	my ($outMD,$metrics) = ($outF,$outF);
+	$outMD   =~ s/bam/MD.bam/;
+	$metrics =~ s/bam/MDmetrics.tab/;
+	my $mdCmd = 'java -jar '.$PicardPath.'/picard.jar MarkDuplicates I='.$outF.' O='.$outMD.' M='.$metrics.' VALIDATION_STRINGENCY=LENIENT TMP_DIR='.$TmpPath.' AS=true';
+	print $mdCmd."\n" if ($verbose);
+	system($mdCmd);
+	system("mv $outMD $outF");
+}
+### KB 8/8/2013 - END CHANGES ###
+
+unless ($noErase){
+    print $rmCmd."\n" if ($verbose);
+    system($rmCmd);
+}
+
+################################################################################
+sub checkBAMorder{
+	my ($bamFile,$idxFile) = @_;
+	
+	my @Obam = getBAMorder($bamFile);
+	my @Oidx = getIDXorder($idxFile);
+	
+	return 0 if ($#Oidx ne $#Obam);
+	
+	for my $i(0..$#Oidx){
+		return 0 if ($Oidx[$i] ne $Obam[$i]);	
+	}
+	
+	return 1;
+}
+
+################################################################################
+sub getBAMorder{
+	my ($BF) = shift;
+	
+	my @ret;
+	
+	for my $l (`$ENV{'SSDSSAMTOOLSPATH'}/samtools view -H $BF`){
+		my ($csNM,$csLN);
+		$csNM = $1 if ($l =~ /SN:(\S+)/);
+		$csLN = $1 if ($l =~ /LN:(\S+)/);
+		push @ret, $csNM.$csLN if($csNM);
+	}
+	
+	return @ret;
+}
+
+################################################################################
+sub getIDXorder{
+	my ($IF) = shift;
+	
+	my @ret;
+	open IDXINFILE, $IF;
+	while (<IDXINFILE>){
+		my @l = split(/\t/,$_);
+		
+		push @ret, $l[0].$l[1];
+	}
+	
+	return @ret;
+}
+

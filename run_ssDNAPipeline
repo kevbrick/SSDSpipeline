@@ -42,6 +42,7 @@ unless ($sampleID && $sampleDate && $sampleLane){
 	($sampleDate, $sampleLane, $sampleID) = ($1,$2,$3);
 	
 	unless ($1 && $2 && $3){
+		print STDERR 'No sample / date / lane info from BAM ... using defaults ...'."\n";
 		my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdt)=localtime(time);
 		
 		my $host = `hostname`; chomp $host; $host =~ s/\s+//g; 

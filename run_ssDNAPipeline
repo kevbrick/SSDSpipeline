@@ -40,6 +40,16 @@ unless ($sampleID && $sampleDate && $sampleLane){
 	print STDERR 'No sample / date / lane info provided ... attempting to determine from BAM name'."\n";
 	$bam =~ /(\d{6})_\d{4}_(\d+)_\S{6}_(\S+?)\./;
 	($sampleDate, $sampleLane, $sampleID) = ($1,$2,$3);
+	
+	unless ($1 && $2 && $3){
+		my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdt)=localtime(time);
+		
+		my $host = `hostname`; chomp $host; $host =~ s/\s+//g; 
+		$sampleDate = sprintf( "%02d%02d%02d", $mday, ($mon+1), ($year+1900-2000));
+		$sampleLane = "999";
+		$sampleID   = sprintf( "%s_%02d%02d%02d_%02d:%02d:%02d", $host, $mday, ($mon+1), ($year+1900-2000), $hour, $min, $sec);
+	}
+	
 	print STDERR "Sample name: $sampleID\n";
 	print STDERR "Sample date: $sampleDate\n";
 	print STDERR "Sample lane: $sampleLane\n";

@@ -28,6 +28,24 @@ done
 echo INSTALL PATH    = "${INSTALLPATH}"
 echo GENOMES FOLDER  = "${GENOMESPATH}"
 
+installParentDir="$(dirname "$INSTALLPATH")"
+iOwner=`ls -ld $installParentDir |awk '{print $3}'`
+
+genomeParentDir="$(dirname "$GENOMESPATH")"
+gOwner=`ls -ld $genomeParentDir |awk '{print $3}'`
+
+if [ "$iOwner" = "root" ]
+then
+	echo "##### WARNING ##### : Installation folder ["$INSTALLPATH"] is only writable by root user"
+	sleep 3
+fi	
+
+if [ "$gOwner" = "root" ]
+then
+	echo "##### WARNING ##### : SSDS Genomes folder ["$GENOMESPATH"] is only writable by root user"
+	sleep 3
+fi
+
 ######################## DONE ARGS ######################
 
 ## Create Genomes Folder
@@ -55,6 +73,11 @@ else
 fi
 
 cp -r $RUNDIR/* $INSTALLPATH || exit 1
+
+if [ "$iOwner" != "root" ]
+then
+	chown -R $SUDO_USER $INSTALLPATH || exit 1
+fi
 
 # Check install dir 
 RUNDIR=$INSTALLPATH
@@ -90,15 +113,15 @@ for thisBASHRC in `find /home -maxdepth 2 -name '.bashrc'` '/root/.bashrc'; do
 	echo 'export SSDSSAMTOOLSPATH='$RUNDIR'/samtools-0.1.17' >>$thisBASHRC || exit 1
 	echo 'export SSDSGENOMESPATH='$GENOMESPATH >>$thisBASHRC || exit 1
 	echo 'export SSDSTMPPATH=/tmp' >>$thisBASHRC || exit 1
-	echo 'export PERL5LIB=$PERL5LIB:'$RUNDIR >>$thisBASHRC || exit 1
+	echo 'export PERL5LIB='$PERL5LIB':'$RUNDIR >>$thisBASHRC || exit 1
 done
 
 ## Export environment vars for current session
 export SSDSPIPELINEPATH=$RUNDIR >>$thisBASHRC || exit 1
 export SSDSPICARDPATH=$RUNDIR'/picard-tools-2.3.0' >>$thisBASHRC || exit 1
 export SSDSFASTXPATH=$RUNDIR >>$thisBASHRC || exit 1
-export SSDSSAMTOOLSPATH=$RUNDIR >>$thisBASHRC || exit 1
-export SSDSGENOMESPATH=$RUNDIR'/genomes' >>$thisBASHRC || exit 1
+export SSDSSAMTOOLSPATH=$RUNDIR'/samtools-0.1.17' >>$thisBASHRC || exit 1
+export SSDSGENOMESPATH=$GENOMESPATH >>$thisBASHRC || exit 1
 export SSDSTMPPATH=/tmp >>$thisBASHRC || exit 1
 export PERL5LIB=$PERL5LIB':'$RUNDIR >>$thisBASHRC || exit 1
 
@@ -113,6 +136,20 @@ echo '-------------------------------------------------'
 
 ## Run tests
 sh $RUNDIR\/unitTest/runTest.sh || exit 1
+
+## Reset all ownership to current user
+#  unless installed to admin location
+if [ "$iOwner" != "root" ]
+then
+	chown -R $SUDO_USER $INSTALLPATH || exit 1
+	chgrp -R $SUDO_GID $INSTALLPATH || exit 1
+fi
+
+if [ "$gOwner" != "root" ]
+then
+	chown -R $SUDO_USER $GENOMESPATH || exit 1
+	chgrp -R $SUDO_GID $GENOMESPATH || exit 1
+fi
 
 ## Give the ALL OK !!
 echo "Tests complete ..."

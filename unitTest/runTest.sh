@@ -1,3 +1,5 @@
+#!/bin/bash
+
 ## Ensure that we've cleaned up first
 rm -rf $SSDSGENOMESPATH/testGenome/
 rm $SSDSPIPELINEPATH/unitTest/output/fromFASTQ/*
@@ -17,7 +19,7 @@ if [ -f $SSDSGENOMESPATH/testGenome/BWAIndex/version0.7.10/genome.fa.bwt ]; then
     echo "Test genome was added and indexed successfully !!"
 else
 	echo "**** FAIL **** Test genome was NOT added correctly !!" 
-	exit
+	exit 99
 fi
 
 ## TEST 1: Using FASTQ files as input
@@ -38,7 +40,7 @@ if [ -f $SSDSPIPELINEPATH/unitTest/output/fromFASTQ/SSDSdemo.testgenome.ssPipeli
     echo "SSDS pipeline from FASTQ successful !!" 
 else
 	echo "**** FAIL **** SSDS pipeline from FASTQ did not run correctly !!" 
-	exit
+	exit 99
 fi
 
 ## TEST 2: Using FASTQ.GZ files as input
@@ -59,7 +61,7 @@ if [ -f $SSDSPIPELINEPATH/unitTest/output/fromFASTQ/SSDSdemo.testgenome.ssPipeli
     echo "SSDS pipeline from FASTQ.GZ successful !!"
 else
 	echo "**** FAIL **** SSDS pipeline from FASTQ.GZ did not run correctly !!" 
-	exit
+	exit 99
 fi
 
 ## TEST 3: Using paired-end BAM file as input
@@ -79,5 +81,5 @@ if [ -f $SSDSPIPELINEPATH/unitTest/output/fromFASTQ/SSDSdemo.testgenome.ssPipeli
     echo "SSDS pipeline from BAM successful !!"  
 else
 	echo "**** FAIL **** SSDS pipeline from BAM did not run correctly !!"  
-	exit
+	exit 99
 fi

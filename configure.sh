@@ -41,6 +41,7 @@ chmod a+rw $INSTALLPATH || exit 1
 RUNDIR=`pwd`
 FLDNAME=`basename $RUNDIR`
 
+# Check start dir
 TSTFILE=$RUNDIR'/run_ssDNAPipeline'
 
 if [ -f $TSTFILE ]; then
@@ -55,7 +56,17 @@ fi
 
 cp -r $RUNDIR/* $SSDSPATH || exit 1
 
+# Check install dir 
 RUNDIR=$INSTALLPATH
+TSTFILE=$RUNDIR'/run_ssDNAPipeline'
+if [ -f $TSTFILE ]; then
+   echo "OK ... configuring SSDS alignment pipeline ..."
+else
+   echo "** ERROR **"
+   echo "Cannot execute config script from $RUNDIR"
+   echo "Please ensure that the installation folder ["$INSTALLDIR"]can be created."
+   exit
+fi
 
 ## Get packages
 apt-get install -y default-jre zlib1g-dev bioperl || exit 1

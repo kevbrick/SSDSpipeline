@@ -34,6 +34,9 @@ echo GENOMES FOLDER  = "${GENOMESPATH}"
 mkdir -p $GENOMESPATH || exit 1
 chmod a+rw $GENOMESPATH || exit 1
 
+mkdir -p $INSTALLPATH || exit 1
+chmod a+rw $INSTALLPATH || exit 1
+
 ## Copy git folder to install location
 RUNDIR=`pwd`
 FLDNAME=`basename $RUNDIR`

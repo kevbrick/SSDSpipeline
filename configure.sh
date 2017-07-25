@@ -55,7 +55,7 @@ cp -r $RUNDIR/* $SSDSPATH || exit 1
 RUNDIR=$INSTALLPATH
 
 ## Get packages
-apt-get install -y default-jre zlibg-dev bioperl || exit 1
+apt-get install -y default-jre zlib1g-dev bioperl || exit 1
  
 ## Get perl modules
 export PERL_MM_USE_DEFAULT=1

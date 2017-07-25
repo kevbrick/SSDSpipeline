@@ -54,7 +54,7 @@ else
    exit
 fi
 
-cp -r $RUNDIR/* $SSDSPATH || exit 1
+cp -r $RUNDIR/* $INSTALLPATH || exit 1
 
 # Check install dir 
 RUNDIR=$INSTALLPATH
@@ -64,7 +64,7 @@ if [ -f $TSTFILE ]; then
 else
    echo "** ERROR **"
    echo "Cannot execute config script from $RUNDIR"
-   echo "Please ensure that the installation folder ["$INSTALLDIR"]can be created."
+   echo "Please ensure that the installation folder ["$INSTALLPATH"]can be created."
    exit
 fi
 

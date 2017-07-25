@@ -1,5 +1,9 @@
 #!/bin/bash
 
+initDir=`pwd`
+
+cd $SSDSPIPELINEPATH/unitTest
+
 ## Ensure that we've cleaned up first
 rm -rf $SSDSGENOMESPATH/testGenome/
 rm $SSDSPIPELINEPATH/unitTest/output/fromFASTQ/*
@@ -20,6 +24,7 @@ if [ -f $SSDSGENOMESPATH/testGenome/BWAIndex/version0.7.10/genome.fa.bwt ]; then
 else
 	echo "**** FAIL **** Test genome was NOT added correctly !!" 
 	cat runTest.e
+	cd $initDir
 	exit 99
 fi
 
@@ -42,6 +47,7 @@ if [ -f $SSDSPIPELINEPATH/unitTest/output/fromFASTQ/SSDSdemo.testgenome.ssPipeli
 else
 	echo "**** FAIL **** SSDS pipeline from FASTQ did not run correctly !!" 
 	cat runTest.e
+	cd $initDir
 	exit 99
 fi
 
@@ -63,6 +69,7 @@ if [ -f $SSDSPIPELINEPATH/unitTest/output/fromFASTQ/SSDSdemo.testgenome.ssPipeli
     echo "SSDS pipeline from FASTQ.GZ successful !!"
 else
 	echo "**** FAIL **** SSDS pipeline from FASTQ.GZ did not run correctly !!" 
+	cd $initDir
 	exit 99
 fi
 
@@ -84,5 +91,6 @@ if [ -f $SSDSPIPELINEPATH/unitTest/output/fromFASTQ/SSDSdemo.testgenome.ssPipeli
 else
 	echo "**** FAIL **** SSDS pipeline from BAM did not run correctly !!"  
 	cat runTest.e
+	cd $initDir
 	exit 99
 fi

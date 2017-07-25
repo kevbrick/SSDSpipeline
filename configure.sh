@@ -128,14 +128,17 @@ export PERL5LIB=$PERL5LIB':'$RUNDIR >>$thisBASHRC || exit 1
 ## Output some info
 echo ''
 echo $SSDSPIPELINEPATH' ... OK SSDS PIPELINE PATH?'
-echo $SSDSGENOMESPATH' ... OK GENOMES PATH?'
+echo $SSDSPICARDPATH' ... OK SSDS PICARD PATH?'
+echo $SSDSFASTXPATH' ... OK SSDS FASTX PATH?'
+echo $SSDSSAMTOOLSPATH' ... OK SSDS SAMTOOLS PATH?'
+echo $SSDSGENOMESPATH' ... OK SSDS GENOMES PATH?'
+echo $SSDSTMPPATH' ... OK TMP PATH?'
+echo $PERL5LIB' ... OK PERL PATH?'
+
 echo ''
 echo '-------------------------------------------------'
 echo "Configuration complete ... running unit tests ..."
 echo '-------------------------------------------------'
-
-## Run tests
-sh $RUNDIR\/unitTest/runTest.sh || exit 1
 
 ## Reset all ownership to current user
 #  unless installed to admin location
@@ -150,6 +153,9 @@ then
 	chown -R $SUDO_USER $GENOMESPATH || exit 1
 	chgrp -R $SUDO_GID $GENOMESPATH || exit 1
 fi
+
+## Run tests
+sh $RUNDIR\/unitTest/runTest.sh || exit 1
 
 ## Give the ALL OK !!
 echo "Tests complete ..."

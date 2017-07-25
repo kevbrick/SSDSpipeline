@@ -19,6 +19,7 @@ if [ -f $SSDSGENOMESPATH/testGenome/BWAIndex/version0.7.10/genome.fa.bwt ]; then
     echo "Test genome was added and indexed successfully !!"
 else
 	echo "**** FAIL **** Test genome was NOT added correctly !!" 
+	cat runTest.e
 	exit 99
 fi
 
@@ -40,6 +41,7 @@ if [ -f $SSDSPIPELINEPATH/unitTest/output/fromFASTQ/SSDSdemo.testgenome.ssPipeli
     echo "SSDS pipeline from FASTQ successful !!" 
 else
 	echo "**** FAIL **** SSDS pipeline from FASTQ did not run correctly !!" 
+	cat runTest.e
 	exit 99
 fi
 
@@ -81,5 +83,6 @@ if [ -f $SSDSPIPELINEPATH/unitTest/output/fromFASTQ/SSDSdemo.testgenome.ssPipeli
     echo "SSDS pipeline from BAM successful !!"  
 else
 	echo "**** FAIL **** SSDS pipeline from BAM did not run correctly !!"  
+	cat runTest.e
 	exit 99
 fi

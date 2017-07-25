@@ -87,7 +87,7 @@ for thisBASHRC in `find /home -maxdepth 2 -name '.bashrc'` '/root/.bashrc'; do
 	echo 'export SSDSPIPELINEPATH='$RUNDIR >>$thisBASHRC || exit 1
 	echo 'export SSDSPICARDPATH='$RUNDIR'/picard-tools-2.3.0' >>$thisBASHRC || exit 1
 	echo 'export SSDSFASTXPATH='$RUNDIR >>$thisBASHRC || exit 1
-	echo 'export SSDSSAMTOOLSPATH='$RUNDIR >>$thisBASHRC || exit 1
+	echo 'export SSDSSAMTOOLSPATH='$RUNDIR'/samtools-0.1.17' >>$thisBASHRC || exit 1
 	echo 'export SSDSGENOMESPATH='$GENOMESPATH >>$thisBASHRC || exit 1
 	echo 'export SSDSTMPPATH=/tmp' >>$thisBASHRC || exit 1
 	echo 'export PERL5LIB=$PERL5LIB:'$RUNDIR >>$thisBASHRC || exit 1

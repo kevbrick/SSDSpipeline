@@ -15,9 +15,9 @@ cd $SSDSPIPELINEPATH/unitTest
 
 ## Ensure that we've cleaned up first
 rm -rf $SSDSGENOMESPATH/testGenome/
-rm $SSDSPIPELINEPATH/unitTest/output/fromFASTQ/*
-rm $SSDSPIPELINEPATH/unitTest/output/fromFASTQgz/*
-rm $SSDSPIPELINEPATH/unitTest/output/fromBAM/*
+rm $SSDSPIPELINEPATH/unitTest/output/fromFASTQ/* 2>/dev/null
+rm $SSDSPIPELINEPATH/unitTest/output/fromFASTQgz/* 2>/dev/null
+rm $SSDSPIPELINEPATH/unitTest/output/fromBAM/* 2>/dev/null
 
 ## Add the test genome
 perl $SSDSPIPELINEPATH/addGenome.pl \

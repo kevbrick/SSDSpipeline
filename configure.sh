@@ -1,8 +1,29 @@
 #!/bin/bash
 
-INSTALLPATH='/usr/share/ssdsPipeline/'
-GENOMESPATH='/usr/share/ssdsPipeline/genomes/'
-	
+## Ensure that sudo is used, not su
+if [ "`whoami`" = "root" ] && [ -z "$SUDO_USER" ]
+then
+	echo '##########################################'
+	echo "## ERROR ##"
+	echo "Please run configure.sh using sudo, not su"
+	echo '##########################################'
+	exit 1
+fi
+
+if [ "`whoami`" != "root" ]
+then
+	echo '##################################'
+	echo "## ERROR ##"
+	echo "Please run configure.sh using sudo"
+	echo '##################################'
+	exit 1
+fi
+
+## Define default paths
+INSTALLPATH='/home/'$SUDO_USER'/SSDS_pipeline_1.0.0/'
+GENOMESPATH='/home/'$SUDO_USER'/SSDS_pipeline_1.0.0/genomes'
+
+## Check args
 while [[ $# -gt 1 ]]
 	do
 	key="$1"
@@ -27,12 +48,11 @@ done
 
 echo INSTALL PATH    = "${INSTALLPATH}"
 echo GENOMES FOLDER  = "${GENOMESPATH}"
+sleep 3
 
+# Warn users if root-accessible folders are selected
 installParentDir="$(dirname "$INSTALLPATH")"
 iOwner=`ls -ld $installParentDir |awk '{print $3}'`
-
-genomeParentDir="$(dirname "$GENOMESPATH")"
-gOwner=`ls -ld $genomeParentDir |awk '{print $3}'`
 
 if [ "$iOwner" = "root" ]
 then
@@ -40,26 +60,24 @@ then
 	sleep 3
 fi	
 
+## Create Installation Folder
+mkdir -p $INSTALLPATH || exit 1
+chmod a+rw $INSTALLPATH || exit 1
+
+genomeParentDir="$(dirname "$GENOMESPATH")"
+gOwner=`ls -ld $genomeParentDir |awk '{print $3}'`
+
 if [ "$gOwner" = "root" ]
 then
 	echo "##### WARNING ##### : SSDS Genomes folder ["$GENOMESPATH"] is only writable by root user"
 	sleep 3
 fi
 
-######################## DONE ARGS ######################
-
 ## Create Genomes Folder
 mkdir -p $GENOMESPATH || exit 1
 chmod a+rw $GENOMESPATH || exit 1
 
-mkdir -p $INSTALLPATH || exit 1
-chmod a+rw $INSTALLPATH || exit 1
-
-installParentDir="$(dirname "$INSTALLPATH")"
-iOwner=`ls -ld $installParentDir |awk '{print $3}'`
-
-genomeParentDir="$(dirname "$GENOMESPATH")"
-gOwner=`ls -ld $genomeParentDir |awk '{print $3}'`
+######################## DONE ARGS ######################
 
 ## Copy git folder to install location
 RUNDIR=`pwd`
@@ -116,7 +134,7 @@ for thisBASHRC in `find /home -maxdepth 2 -name '.bashrc'` '/root/.bashrc'; do
 	cp $thisBASHRC $thisBASHRC\.SSDSpipeline.bak || exit 1
 	grep -vP '##SSDSPIPELINE_ENVIRONMENT_VARS' $thisBASHRC\.SSDSpipeline.bak >$thisBASHRC ||exit 1
 	
-	echo ' ' >>$thisBASHRC || exit 1
+	echo '##SSDSPIPELINE_ENVIRONMENT_VARS' >>$thisBASHRC || exit 1
 	echo 'export SSDSPIPELINEPATH='$RUNDIR' ##SSDSPIPELINE_ENVIRONMENT_VARS' >>$thisBASHRC || exit 1
 	echo 'export SSDSPICARDPATH='$RUNDIR'/picard-tools-2.3.0 ##SSDSPIPELINE_ENVIRONMENT_VARS' >>$thisBASHRC || exit 1
 	echo 'export SSDSFASTXPATH='$RUNDIR >>$thisBASHRC' ##SSDSPIPELINE_ENVIRONMENT_VARS' || exit 1

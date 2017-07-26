@@ -172,7 +172,7 @@ resetOwnership $iOwner $INSTALLPATH
 resetOwnership $gOwner $GENOMESPATH 
 
 ## Run tests
-su -c $SUDO_USER 'sh '$RUNDIR'/unitTest/runTest.sh' || exit 1
+su $SUDO_USER -c 'sh '$RUNDIR'/unitTest/runTest.sh' || exit 1
 
 #resetOwnership "reset" $INSTALLPATH'/unitTest'
 

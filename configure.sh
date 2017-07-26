@@ -106,14 +106,17 @@ perl $RUNDIR/Bio-SamTools-1.43/INSTALL.pl
 
 ## Add environment vars to .bashrc
 for thisBASHRC in `find /home -maxdepth 2 -name '.bashrc'` '/root/.bashrc'; do
+	cp $thisBASHRC $thisBASHRC\.SSDSpipeline.bak || exit 1
+	grep -vP '##SSDSPIPELINE_ENVIRONMENT_VARS' $thisBASHRC\.SSDSpipeline.bak >$thisBASHRC ||exit 1
+	
 	echo ' ' >>$thisBASHRC || exit 1
-	echo 'export SSDSPIPELINEPATH='$RUNDIR >>$thisBASHRC || exit 1
-	echo 'export SSDSPICARDPATH='$RUNDIR'/picard-tools-2.3.0' >>$thisBASHRC || exit 1
-	echo 'export SSDSFASTXPATH='$RUNDIR >>$thisBASHRC || exit 1
-	echo 'export SSDSSAMTOOLSPATH='$RUNDIR'/samtools-0.1.17' >>$thisBASHRC || exit 1
-	echo 'export SSDSGENOMESPATH='$GENOMESPATH >>$thisBASHRC || exit 1
-	echo 'export SSDSTMPPATH=/tmp' >>$thisBASHRC || exit 1
-	echo 'export PERL5LIB='$PERL5LIB':'$RUNDIR >>$thisBASHRC || exit 1
+	echo 'export SSDSPIPELINEPATH='$RUNDIR' ##SSDSPIPELINE_ENVIRONMENT_VARS' >>$thisBASHRC || exit 1
+	echo 'export SSDSPICARDPATH='$RUNDIR'/picard-tools-2.3.0 ##SSDSPIPELINE_ENVIRONMENT_VARS' >>$thisBASHRC || exit 1
+	echo 'export SSDSFASTXPATH='$RUNDIR >>$thisBASHRC' ##SSDSPIPELINE_ENVIRONMENT_VARS' || exit 1
+	echo 'export SSDSSAMTOOLSPATH='$RUNDIR'/samtools-0.1.17 ##SSDSPIPELINE_ENVIRONMENT_VARS' >>$thisBASHRC || exit 1
+	echo 'export SSDSGENOMESPATH='$GENOMESPATH' ##SSDSPIPELINE_ENVIRONMENT_VARS' >>$thisBASHRC || exit 1
+	echo 'export SSDSTMPPATH=/tmp ##SSDSPIPELINE_ENVIRONMENT_VARS' >>$thisBASHRC || exit 1
+	echo 'export PERL5LIB='$PERL5LIB':'$RUNDIR' ##SSDSPIPELINE_ENVIRONMENT_VARS' >>$thisBASHRC || exit 1
 done
 
 ## Export environment vars for current session

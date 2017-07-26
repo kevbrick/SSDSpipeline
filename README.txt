@@ -184,7 +184,7 @@ NOTE (*): Either --bam OR --fq1 & --fq2 arguments are required
 --h/help       Show help
 
 OUTPUT FILES FROM THE SSDS PIPELINE:
-The SSDS pipeline aligns Illumina sequencing reads to a reference genome and then generates output files for each of five sub-categories of DNA types (Fig. X): 
+The SSDS pipeline aligns Illumina sequencing reads to a reference genome and then generates output files for each of five sub-categories of DNA types (see Khil et al. Genome Research 2012): 
 
 ssDNA type 1 : high confidence ssDNA
 ssDNA type 2 : low confidence ssDNA

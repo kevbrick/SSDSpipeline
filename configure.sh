@@ -55,6 +55,12 @@ chmod a+rw $GENOMESPATH || exit 1
 mkdir -p $INSTALLPATH || exit 1
 chmod a+rw $INSTALLPATH || exit 1
 
+installParentDir="$(dirname "$INSTALLPATH")"
+iOwner=`ls -ld $installParentDir |awk '{print $3}'`
+
+genomeParentDir="$(dirname "$GENOMESPATH")"
+gOwner=`ls -ld $genomeParentDir |awk '{print $3}'`
+
 ## Copy git folder to install location
 RUNDIR=`pwd`
 FLDNAME=`basename $RUNDIR`
@@ -154,27 +160,11 @@ resetOwnership () {
 	fi
 }
 
-### Reset all ownership to current user
-##  unless installed to admin location
-#if [ "$iOwner" != "root" ]
-#then
-#	chown -R $SUDO_USER $INSTALLPATH || exit 1
-#	chgrp -R $SUDO_GID $INSTALLPATH || exit 1
-#fi
-#
-#if [ "$gOwner" != "root" ]
-#then
-#	chown -R $SUDO_USER $GENOMESPATH || exit 1
-#	chgrp -R $SUDO_GID $GENOMESPATH || exit 1
-#fi
-
 resetOwnership $iOwner $INSTALLPATH 
 resetOwnership $gOwner $GENOMESPATH 
 
 ## Run tests
-su $SUDO_USER -c 'sh '$RUNDIR'/unitTest/runTest.sh' || exit 1
-
-#resetOwnership "reset" $INSTALLPATH'/unitTest'
+su $SUDO_USER -c 'sh $SSDSPIPELINEPATH/unitTest/runTest.sh' || exit 1
 
 ## Give the ALL OK !!
 echo "Tests complete ..."

@@ -101,6 +101,7 @@ cpan Getopt::Long || exit 1
 cpan Math::Round || exit 1
 cpan Statistics::Descriptive || exit 1
 cpan Switch || exit 1
+cpan Module::Build || exit 1
 
 perl $RUNDIR/Bio-SamTools-1.43/INSTALL.pl
 
@@ -143,22 +144,37 @@ echo '-------------------------------------------------'
 echo "Configuration complete ... running unit tests ..."
 echo '-------------------------------------------------'
 
-## Reset all ownership to current user
-#  unless installed to admin location
-if [ "$iOwner" != "root" ]
-then
-	chown -R $SUDO_USER $INSTALLPATH || exit 1
-	chgrp -R $SUDO_GID $INSTALLPATH || exit 1
-fi
+resetOwnership () {
+	# Reset all ownership to current user
+	# unless installed to admin location
+	if [ "$1" != "root" ]
+	then
+		chown -R $SUDO_USER $2 || exit 1
+		chgrp -R $SUDO_GID $2 || exit 1
+	fi
+}
 
-if [ "$gOwner" != "root" ]
-then
-	chown -R $SUDO_USER $GENOMESPATH || exit 1
-	chgrp -R $SUDO_GID $GENOMESPATH || exit 1
-fi
+### Reset all ownership to current user
+##  unless installed to admin location
+#if [ "$iOwner" != "root" ]
+#then
+#	chown -R $SUDO_USER $INSTALLPATH || exit 1
+#	chgrp -R $SUDO_GID $INSTALLPATH || exit 1
+#fi
+#
+#if [ "$gOwner" != "root" ]
+#then
+#	chown -R $SUDO_USER $GENOMESPATH || exit 1
+#	chgrp -R $SUDO_GID $GENOMESPATH || exit 1
+#fi
+
+resetOwnership($iOwner,$INSTALLPATH)
+resetOwnership($gOwner,$GENOMESPATH)
 
 ## Run tests
 sh $RUNDIR\/unitTest/runTest.sh || exit 1
+
+resetOwnership("reset",$INSTALLPATH'/unitTest')
 
 ## Give the ALL OK !!
 echo "Tests complete ..."

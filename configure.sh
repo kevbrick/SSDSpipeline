@@ -168,13 +168,13 @@ resetOwnership () {
 #	chgrp -R $SUDO_GID $GENOMESPATH || exit 1
 #fi
 
-resetOwnership($iOwner,$INSTALLPATH)
-resetOwnership($gOwner,$GENOMESPATH)
+resetOwnership $iOwner $INSTALLPATH 
+resetOwnership $gOwner $GENOMESPATH 
 
 ## Run tests
-sh $RUNDIR\/unitTest/runTest.sh || exit 1
+su -c $SUDO_USER 'sh '$RUNDIR'/unitTest/runTest.sh' || exit 1
 
-resetOwnership("reset",$INSTALLPATH'/unitTest')
+#resetOwnership "reset" $INSTALLPATH'/unitTest'
 
 ## Give the ALL OK !!
 echo "Tests complete ..."

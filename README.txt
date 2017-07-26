@@ -1,6 +1,6 @@
 INSTALLATION:
 The easiest way to install the SSDS alignment pipeline is to simply run the configuration script located in the folder downloaded from github: 
->cd ssdsPipeline
+>cd SSDSpipeline
 
 On debian-based linux systems, the configure script will install the SSDS alignment pipeline to /home/$USER/SSDS_pipeline_1.0.0. 
 
@@ -27,11 +27,11 @@ SSDSTMPPATH : temporary folder location
 PERL5LIB : $SSDSPIPELINEPATH must be added to the perl path
 
 It is best to define these environment variables in your user configuration file (ie. ~/.bashrc). Add the following lines to ~/.bashrc: 
-export SSDSPIPELINEPATH=/XXX/YYY/ssdsPipeline
-export SSDSPICARDPATH=/XXX/YYY/ssdsPipeline/picard-tools-2.3.0
-export SSDSFASTXPATH=/XXX/YYY/ssdsPipeline
-export SSDSSAMTOOLSPATH=/XXX/YYY/ssdsPipeline
-export SSDSGENOMESPATH=/XXX/YYY/ssdsPipeline/genomes
+export SSDSPIPELINEPATH=/XXX/YYY/SSDSpipeline
+export SSDSPICARDPATH=/XXX/YYY/SSDSpipeline/picard-tools-2.3.0
+export SSDSFASTXPATH=/XXX/YYY/SSDSpipeline
+export SSDSSAMTOOLSPATH=/XXX/YYY/SSDSpipeline
+export SSDSGENOMESPATH=/XXX/YYY/SSDSpipeline/genomes
 export SSDSTMPPATH=/tmp
 export PERL5LIB=$PERL5LIB:$SSDSPIPELINEPATH
 

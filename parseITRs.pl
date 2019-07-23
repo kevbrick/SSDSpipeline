@@ -19,7 +19,7 @@ GetOptions ('bam=s' 		=> \(my $in_bam),
 	    'max_reads=i'		=> \(my $max_reads = 1E9), # number of reads to output
 	    'date=s'			=> \(my $clearDate),
 	    'rmInit+'			=> \(my $rmInitialBAM)
-	   );	
+	   );
 
 #if ($clearDate){
 #	$clearDate =~ s/_/ /g;
@@ -41,7 +41,7 @@ $outdir =~ s/\/\//\//;
 die ("EXITING: BAM genome doesn't match genome provided [$g ... v ... $gOK].\n") unless ($g eq $gOK);
 
 my ($PicardPath,$GenomesPath,$samtoolsPath,$TmpPath,$ssPipelinePath,$in_fa,$idx) = genPaths($g);
-$TmpPath = $TmpPath2Use?$TmpPath2Use:$TmpPath; 
+$TmpPath = $TmpPath2Use?$TmpPath2Use:$TmpPath;
 $TmpPath .= '/' unless ($TmpPath =~ /\/$/);
 
 print STDERR "TEMP FOLDER = $TmpPath ... all other messages overridden !!\n";
@@ -52,12 +52,12 @@ die ("EXITING: Output folder [$outdir] does not exist.\n") unless (-d $outdir);
 
 die ("EXITING: Sorry, genome [$g] NOT supported ... update the SSDS_pipeline.pm module.\n") unless (-e $in_fa);
 
-my $nameStub = $in_bam; 
+my $nameStub = $in_bam;
 $nameStub =~ s/^.+\///;
 $nameStub =~ s/^(.+?)\..+/$1/;
 $nameStub .= '.'.$g;
 
-my $full_bam = $in_bam; 
+my $full_bam = $in_bam;
 my $samHead  = `$samtoolsPath/samtools view -H $in_bam`;
 
 $in_bam =~ s/^.+\///;
@@ -130,7 +130,7 @@ for my $in_bam(@bamArray){
 	#my $splitBAMds		= $outname.'.dsDNA.tmp';
 	#my $splitBAMdsS		= $outname.'.dsDNA_strict.tmp';
 	#my $splitBAMunC		= $outname.'.unclassified.tmp';
-	
+
 	my $splitBAMss1		= $outname.'.ssDNA_type1.bam';
 	my $splitBAMss2		= $outname.'.ssDNA_type2.bam';
 	my $splitBAMds		= $outname.'.dsDNA.bam';
@@ -157,7 +157,7 @@ for my $in_bam(@bamArray){
 	}
 
 	my $sam = Bio::DB::Sam->new(
-			-bam  => $in_bam, 
+			-bam  => $in_bam,
 			-fasta=>$in_fa,
 			-autoindex  => 1,
 			-expand_flags => 1,
@@ -167,7 +167,7 @@ for my $in_bam(@bamArray){
 ## NOT NEEDED: KB 02-04-16
 #	if ($output =~ /(sam|all|bedbam)/){
 #		my $header = $sam->header();
-#		die " no header in input bam file!!!\n" unless ($header);	
+#		die " no header in input bam file!!!\n" unless ($header);
 #		print OUT_SAM $header->text;
 #	}
 
@@ -180,22 +180,22 @@ for my $in_bam(@bamArray){
 				'-seq_id'   => $seq_id);
 
 		while (my $pair = $iter_pair->next_seq() ) {
-		
+
 			my ($left,$right) = $pair->get_SeqFeatures;
-		
-	
+
+
 			last if $i > $max_reads ;
 			next if !defined($left) || !defined($right)|| $left->unmapped || $right->unmapped;
 			next if !$noQC && (!$left->proper_pair || $left->seq_id ne $right->seq_id || ($right->end - $left->start >10000));
-			
+
 			my $first_mate; my $second_mate;
-		
+
 			if ($left->get_tag_values('FIRST_MATE')) {
-				$first_mate = $left; $second_mate = $right; 
+				$first_mate = $left; $second_mate = $right;
 			} else {
 				$first_mate = $right; $second_mate = $left;
 			}
-		
+
 			if ($DIAG) {
 				my $f_start = $first_mate->start;
 				my $f_end = $first_mate->end;
@@ -206,7 +206,7 @@ for my $in_bam(@bamArray){
 				my $f_read = $f_strand == +1 ? $first_mate->query->dna : $first_mate->query->seq->revcom->seq;
 				my $f_chrom= $first_mate->seq_id;
 				my $f_qual = $first_mate->qual;
-			
+
 				my $s_start = $second_mate->start;
 				my $s_end = $second_mate->end;
 				my $s_strand = $second_mate->strand;
@@ -216,47 +216,48 @@ for my $in_bam(@bamArray){
 				my $s_read = $s_strand == +1 ? $second_mate->query->dna : $second_mate->query->seq->revcom->seq;
 				my $s_chrom= $second_mate->seq_id;
 				my $s_qual = $second_mate->qual;
-			
+
 				my $p_length = $pair->length;
 				print "alignment # $i\n";
 				print "$f_name\t$f_chrom\t$f_start\t$f_end\t$f_strand\t$s_name\t$s_chrom\t$s_start\t$s_end\t$s_strand\t$p_length\n";
 				print $f_qual, "\t", $f_cigar,"\t", $s_qual, "\t", $s_cigar,"\n";
 			}
 
-		
+
 			#next if $p_length > 400;
 			#next if !$noQC && ($f_qual < $MIN_QUAL  || $s_qual < $MIN_QUAL);
-		
+
 			my ($ref_2,$matches_2,$query_2) = $second_mate->padded_alignment;
 			my ($ref_1,$matches_1,$query_1) = $first_mate->padded_alignment;
-		
+
 			my ($ITR_len, $aln_offset, $uH_len, $aln_correction) = find_offset($ref_2,$query_2,$first_mate->target->dna,$second_mate->strand,$nMM);
 			print $ITR_len, "\t", $aln_offset, "\t",$uH_len,"\t",$aln_correction,"\n" if ($DIAG);
-		
+
 			# adjust coord/adjust offset in seq_coord; # deal with soft-clipping? - incorporate "super-strict" filtering
 			# 5' of read 2 must be shifted for fill-in part
-		
+
 			# generate output;
 			my ($strand,$start,$end,$chrom,$f_qual,$s_qual);
-		
+
 			$strand = ($first_mate->strand == 1)? "+": "-";
 			$start  = ($first_mate->strand == 1)? $left->start - 1 : $left->start + $aln_correction - 1;
 			$end    = ($first_mate->strand == 1)? $right->end - $aln_correction: $right->end;
 			$chrom  = $first_mate->seq_id;
 			$f_qual = $first_mate->qual;
 			$s_qual = $second_mate->qual;
-		
+
 			next if ($left->get_tag_values('QC_FAILED') || $right->get_tag_values('QC_FAILED')); ## KB
-		
+		  next if (($ITR_len-$uH_len) < 0); ## KB 07-24-19: Possible but v.rare
+
 			if ($output eq "ssDNA_Type1"){
 				# possible update definition
 				next unless ($ITR_len > 5 && $aln_offset > 2 && $uH_len >= 0);
 			}
-		
+
 			if ($output eq "ssDNA_Type2"){
 				next unless ($ITR_len > 5 && $aln_offset < 3 && $uH_len >= 0);
 			}
-		
+
 			if ($output eq "ssDNA_Type12"){
 				next unless ($ITR_len > 5 && $uH_len >= 0);
 			}
@@ -264,7 +265,7 @@ for my $in_bam(@bamArray){
 			if ($output eq "dsDNA"){
 				next unless $ITR_len < 3;
 			}
-		
+
 			if ($output eq "stat"){
 				next;
 			}
@@ -274,24 +275,24 @@ for my $in_bam(@bamArray){
 #				print OUT_T2  join("\t", ($chrom,$start,$end,$f_qual."_".$s_qual,$ITR_len."_".$uH_len."_".$aln_offset,$strand)), "\n" if ($ITR_len > 5 && $aln_offset < 3 && $uH_len >= 0);
 #				print OUT_DS  join("\t", ($chrom,$start,$end,$f_qual."_".$s_qual,$ITR_len."_".$uH_len."_".$aln_offset,$strand)), "\n" if ($ITR_len < 3);
 #			}
-#			
+#
 #			if ($outtype eq 'bed'){
 #				print join("\t", ($chrom,$start,$end,$f_qual."_".$s_qual,$ITR_len."_".$uH_len,$strand)), "\n";
 #			}
-		
+
 			if ($output =~ /bedbam/){
 				## Kevin 11/17/11 - output to SAM
 				my @s_tam = split(/\t/,$second_mate->tam_line());
 				my @f_tam = split(/\t/,$first_mate->tam_line());
-			
+
 				$f_tam[7] = $second_mate->start;
 				$s_tam[7] = $first_mate->start;
-						
+
 				my ($s_line,$nI,$nD,$nS) = generateSAMline(2,\@s_tam,$ITR_len-$uH_len,$second_mate->strand);
 				my ($f_line,$nA,$nD,$nS) = generateSAMline(1,\@f_tam,$ITR_len-$uH_len,$first_mate->strand,$nI,$nD,$nS);
-			
+
 				if ($f_line && $s_line){
-					my $lineOut; 
+					my $lineOut;
 
 					if ($ITR_len > 5 && $aln_offset > 2 && $uH_len >= 0){
 						print OUT_BEDss1  join("\t", ($chrom,$start,$end,$f_qual."_".$s_qual,$ITR_len."_".$uH_len."_".$aln_offset,$strand)), "\n" ;
@@ -299,11 +300,11 @@ for my $in_bam(@bamArray){
 						print OUT_SAMss1 $s_line."\tit:i:$ITR_len\tuh:i:$uH_len\tos:i:$aln_offset\tmm:i:$nMM\n";
 						$lineOut++;
 					}
-					
+
 					if ($ITR_len > 5 && $aln_offset < 3 && $uH_len >= 0){
 						print OUT_BEDss2  join("\t", ($chrom,$start,$end,$f_qual."_".$s_qual,$ITR_len."_".$uH_len."_".$aln_offset,$strand)), "\n" ;
 						print OUT_SAMss2 $f_line."\tit:i:$ITR_len\tuh:i:$uH_len\tos:i:$aln_offset\tmm:i:$nMM\n";
-						print OUT_SAMss2 $s_line."\tit:i:$ITR_len\tuh:i:$uH_len\tos:i:$aln_offset\tmm:i:$nMM\n";   
+						print OUT_SAMss2 $s_line."\tit:i:$ITR_len\tuh:i:$uH_len\tos:i:$aln_offset\tmm:i:$nMM\n";
 						$lineOut++;
 					}
 
@@ -329,8 +330,8 @@ for my $in_bam(@bamArray){
 					}
 
 				}
-			}			
-		
+			}
+
 			$i++;
 		}
 	}
@@ -346,8 +347,8 @@ for my $in_bam(@bamArray){
 	close OUT_SAMds;
 	close OUT_SAMdsS;
 	close OUT_SAMunC;
-	
-	## SAM -> BAM 
+
+	## SAM -> BAM
 	print STDERR "SAM -> BAM: $splitBAMss1 [File $fileCount of $bamCount]\n";
 	sysAndPrint($samtoolsPath.'/samtools view -Shb '.$splitSAMss1.' >'.$splitBAMss1,1);
 	#sysAndPrint($ssPipelinePath.'/sortBAM --g '.$g.' --v '.$splitTMPBAMss1.' --out '.$splitBAMss1,1);
@@ -367,8 +368,8 @@ for my $in_bam(@bamArray){
 	print STDERR "SAM -> BAM: $splitBAMunC [File $fileCount of $bamCount]\n";
 	sysAndPrint($samtoolsPath.'/samtools view -Shb '.$splitSAMunC.' >'.$splitBAMunC,1);
 	#sysAndPrint($ssPipelinePath.'/sortBAM --g '.$g.' --v '.$splitTMPBAMunC.' --out '.$splitBAMunC,1);
-	
-	## SORT BED FILES 
+
+	## SORT BED FILES
 	print STDERR "Sort ssDNA bed: $splitBEDss1 [File $fileCount of $bamCount]\n";
 	sysAndPrint('sort -k1,1 -k2n,2n '.$splitBEDss1.' >'.$splitBEDSORTss1,1);
 
@@ -415,14 +416,14 @@ sysAndPrint($samtoolsPath.'/samtools index '.$outBAMunC,1);
 if (allOK($outBEDss1,$outBEDss2,$outBEDds,$outBEDdsS,$outBEDunC,$outBAMss1,$outBAMss2,$outBAMds,$outBAMdsS,$outBAMunC)){
 	sysAndPrint("touch $doneFile",1);
 }else{
-	sysAndPrint("touch $errFile",1);			
+	sysAndPrint("touch $errFile",1);
 }
 sysAndPrint("rm $full_bam",1) if ($rmInitialBAM);
 
 ################################################################################
 sub allOK{
 		my ($bed1,$bed2,$bedDS,$bedDSS,$bedUnC,$bam1,$bam2,$bamDS,$bamDSS,$bamUnC) = @_;
-		
+
 		unless ($bed1 && $bed2 && $bedDS && $bedDSS && $bedUnC && $bam1 && $bam2 && $bamDS && $bamDSS && $bamUnC){
 			print STDERR "Some output filenames are missing ... ABORT !!\n";
 			return 0;
@@ -442,9 +443,9 @@ sub allOK{
 			print STDERR "All BAM files have ZERO size ... ABORT !!\n";
 			return 0;
 		}
-								
+
 		return 1;
-		
+
 }
 
 ################################################################################
@@ -457,7 +458,7 @@ my ($seqA, $seqB, $f_read, $strand,$max_mm)=@_;
 		$seqB = scalar reverse $seqB;
 		$f_read =~ tr/ATGC/TACG/;
 	}
-	
+
 	my @arrA = split(//,$seqA);
 	my @arrB = split(//,$seqB);
 	my @arrT = split(//,$f_read);
@@ -472,55 +473,55 @@ my ($seqA, $seqB, $f_read, $strand,$max_mm)=@_;
 		}
 		$i++;
 	}
-	
+
 	$j = 0; my $mm = 0; my $n_gap = 0;
-	
+
 	while ($mm <= $max_mm && $j <= $#arrC) {
 		$mm++ if $arrB[$j] ne $arrC[$j];
 		$n_gap++ if $arrB[$j] eq "-";
 		$j++;
 	}
-	
+
 	my $aln_offset = $j-1;
-	
+
 	while ($arrB[$aln_offset] ne $arrC[$aln_offset]) {$aln_offset--;}
-	
+
 	my $seq_offset = $aln_offset - $n_gap + 1;
-	
+
 	$seq_offset = 0 if $seq_offset < 0;
-	
+
 	my @cmpAB; my @match_pat; my %score; my %rev_score;  my $max_score = 0;
-	
-	for my $i(0..$#arrA){ 
-		$cmpAB[$i] = ($arrA[$i] eq $arrB[$i] || $arrA[$i] eq "N" || $arrB[$i] eq "N") ? 1 : -1; 
+
+	for my $i(0..$#arrA){
+		$cmpAB[$i] = ($arrA[$i] eq $arrB[$i] || $arrA[$i] eq "N" || $arrB[$i] eq "N") ? 1 : -1;
 		$cmpAB[$i] = -2 if ($arrA[$i] ne $arrB[$i] && $arrB[$i] eq $arrC[$i]);
 	}
-	
+
 	my $min_i = 0;      while ($min_i < $#arrA && $cmpAB[$min_i+1] == -1) {$min_i++;} # min start of offset 0-based
 	my $max_i = $#arrA; while ($max_i > 0      && $cmpAB[$max_i-1] ==  1) {$max_i--;}
-	
-	for my $i(0..$#arrA){ $match_pat[$i] = $i >= $min_i ? 1 : -1;} # 
+
+	for my $i(0..$#arrA){ $match_pat[$i] = $i >= $min_i ? 1 : -1;} #
 	foreach my $offset ($min_i..$max_i) {
 		foreach my $i ($min_i..$max_i) {$score{$offset}+=$cmpAB[$i]*$match_pat[$i];}
 		push @{$rev_score{$score{$offset}}}, $offset;
 		$max_score = $score{$offset} if $score{$offset}>$max_score;
 		$match_pat[$offset] = -1;
 	}
-	
+
 	my $max_offset = 0;
-	
+
 	foreach my $offset (@{$rev_score{$max_score}}) {$max_offset = $max_offset<$offset? $offset : $max_offset;}
-	my $aln_correction = $max_offset; 
-	
+	my $aln_correction = $max_offset;
+
 	for my $i(0..$max_offset){$aln_correction-- if $arrA[$i] eq "-";}
-	
+
 	if ($DIAG) {
 		my $a_string =""; my $m_string = ""; my $i_string = "";
 		foreach my $i (0..$j)     {$i_string .= ($arrB[$i] ne "-" && $arrC[$i] eq $arrB[$i])? "|" : " ";}
 		foreach my $i (0..$#arrA) {$a_string .= ($i >=$max_offset && $arrA[$i] eq $arrB[$i])? "|" : " ";}
 		print $seqA, "\n",$a_string, "\n", $seqB, "\n", $i_string, "\n", $f_read, "\n" ;
 	}
-	
+
 	# ITR length, aln offset, uH
 	my $uH_len = $aln_offset-$max_offset+1; $uH_len = 0 if $uH_len < 0;
 	return $seq_offset, $max_offset, $uH_len ,$aln_correction;
@@ -529,20 +530,20 @@ my ($seqA, $seqB, $f_read, $strand,$max_mm)=@_;
 ################################################################################
 sub parseSAMflag{
 	my $flag =shift;
-	
+
 	my $B = dec2bin($flag);
-	
+
 	while (length($B) < 11){$B = '0'.$B}
-	
+
 	$B = reverse($B);
 
 	my %r1;
-	
+
 	($r1{'Read_Paired'}, $r1{'Pair_OK'}, $r1{'R1Unmapped'}, $r1{'R2Unmapped'},
 	 $r1{'R1RC'}, $r1{'R2RC'}, $r1{'R1'}, $r1{'R2'}, $r1{'SecondaryAln'}, $r1{'QCfail'}, $r1{'Duplicate'}) = split(//,$B);
-	
+
 	return %r1;
-	
+
 }
 
 ################################################################################
@@ -552,46 +553,46 @@ sub SAMstrand{
     my $strand = 1;
     $strand = -1 if ($f{'R1RC'} && $f{'R1'});
     $strand = -1 if ($f{'R1RC'} && $f{'R2'});
-    
+
     return $strand;
 }
 
 ################################################################################
 sub generateSAMline{
     my ($nRead,$rln,$itrLen,$iStrand,$numI,$numD,$numS) = @_;
-        
+
     my ($Ibefore,$Iafter) = (0,0);
     my ($Dbefore,$Dafter) = (0,0);
     my ($Sbefore,$Safter) = (0,0);
-    
+
     if ($nRead == 2){
-	
+
 	$Ibefore += $1 while($$rln[5] =~ /(\d+)I/g);
 	$Dbefore += $1 while($$rln[5] =~ /(\d+)D/g);
         $Sbefore += $1 while($$rln[5] =~ /(\d+)S/g);
-	
+
 	if ($iStrand<0){
             $$rln[5] = trimCigar($$rln[5],$itrLen,'right');
-            
+
             my $regex = '(\S+)\S{'.$itrLen.'}';
             $$rln[9]  =~ s/$regex/$1/;
             $$rln[10] =~ s/$regex/$1/;
-             
-            # Deprecated syntax           
+
+            # Deprecated syntax
             #$$rln[9] =~ s/(\S+)\S{$itrLen}/$1/;
             #$$rln[10] =~ s/(\S+)\S{$itrLen}/$1/;
         }else{
             $$rln[5] = trimCigar($$rln[5],$itrLen,'left');
-            
+
 			my $regex = '\S{'.$itrLen.'}(\S+)';
             $$rln[9]  =~ s/$regex/$1/;
             $$rln[10] =~ s/$regex/$1/;
-            
-            # Deprecated syntax           
+
+            # Deprecated syntax
             #$$rln[9] =~ s/\S{$itrLen}(\S+)/$1/;
             #$$rln[10] =~ s/\S{$itrLen}(\S+)/$1/;
         }
-	
+
 	$Iafter += $1 while($$rln[5] =~ /(\d+)I/g);
 	$Dafter += $1 while($$rln[5] =~ /(\d+)D/g);
 	$Safter += $1 while($$rln[5] =~ /(\d+)S/g);
@@ -600,7 +601,7 @@ sub generateSAMline{
     my $nD = $numD?$numD:($Dbefore - $Dafter);
     my $nI = $numI?$numI:($Ibefore - $Iafter);
     my $nS = $numS?$numS:($Sbefore - $Safter);
-    
+
     return '' if ($$rln[5] !~ /[MIDN]/);
 
     if ($iStrand < 0 && $nRead == 1){
@@ -612,33 +613,33 @@ sub generateSAMline{
         $$rln[3] += $itrLen-$nI+$nD-$nS;
         $$rln[8] -= $itrLen-$nI+$nD-$nS;
     }
-    
+
     my $retLn;
-    
+
     for my $v(@{$rln}){
         my $vOLD = $v;
-        
+
         if ($nRead == 2){
             next if ($v =~ /NM:i:/);
-            
+
             my ($NM,$MDtrim);
-            
+
             if ($v =~ s/(MD:\S+:)(\S+)/$1/){
                 my $txt = $1;
                 $MDtrim = trimXM($2,$itrLen-$nI+$nD-$nS,'left')  if ($iStrand > 0);
                 $MDtrim = trimXM($2,$itrLen-$nI+$nD-$nS,'right') if ($iStrand < 0);
                 $v = $txt.$MDtrim;
-                $NM++ while ($MDtrim =~ /[GATC]/g); 
+                $NM++ while ($MDtrim =~ /[GATC]/g);
                 $vOLD =~ s/MD/YK/;
                 $v = join("\t","NM:i:".($NM?$NM:"0"),$v,$vOLD);
             }
         }
         $retLn .= $v."\t";
     }
-    
+
     chop($retLn);
-    
-    return ($retLn,$nI,$nD,$nS);    
+
+    return ($retLn,$nI,$nD,$nS);
 }
 
 ################################################################################
@@ -656,7 +657,7 @@ sub str2cigar{
     my ($STR) = shift;
     my ($s,$cig);
     my $prev = '';
-    
+
     while ($STR =~ s/^(\S)//){
         if ($1 eq $prev){
             $cig .= $1;
@@ -666,7 +667,7 @@ sub str2cigar{
         }
         $prev = $1;
     }
-    
+
     $s .= length($cig).$prev if ($prev);
     return $s;
 }
@@ -674,20 +675,20 @@ sub str2cigar{
 ################################################################################
 sub trimCigar{
     my ($cigarString,$nTrim,$side) = @_;
-    
+
     my $cigStr = cigar2str($cigarString);
     my @cigArr = split(//,$cigStr);
     my $retStr;
-    
+
     @cigArr = reverse(@cigArr) if ($side eq 'right');
-    
+
     for my $cS(@cigArr){
 	$nTrim-- unless ($cS eq 'D');
 	$retStr .= $cS if ($nTrim < 0);
     }
-    
+
     $retStr = reverse($retStr) if ($side eq 'right');
-    
+
     return str2cigar($retStr);
 }
 
@@ -701,7 +702,7 @@ sub XM2str{
         next if ($n eq '0');
 	if ($n =~ /\d+/){$s .= "M" x $n; next}
 	$s .= $n;
-        
+
     }
     return $s;
 }
@@ -711,42 +712,42 @@ sub str2XM{
     my ($STR) = shift;
     my ($s,$xm);
     my $prev = '';
-    
+
     my $cnt = 0;
     while ($STR =~ s/^(M|[GATC]|\^[GATC]+)//){
         my $x = $1;
-	
+
 	if ($x eq 'M'){
             $cnt++; next;
         }else{
             $s .= ($cnt>0?$cnt:'0').$x;
             $cnt = 0;
         }
-    }        
-    
+    }
+
     $s .= $cnt if ($cnt > 0);
-    
+
     return $s;
 }
 
 ################################################################################
 sub trimXM{
     my ($xmString,$nTrim,$side) = @_;
-    
+
     my $xmStr = XM2str($xmString);
     my @XMArr = split(//,$xmStr);
     my $retStr;
-    
+
     @XMArr = reverse(@XMArr) if ($side eq 'left');
-    
+
     my $XMdel = 0;
-    
+
     $XMdel += (length($1)+1) while ($xmStr =~ /\^([GATC]+)/g);
     my $XMLen = length($xmStr) - $XMdel;
     my $XMOKsz = $XMLen - $nTrim;
-    
+
     my ($noTrim,$nGood);
-    
+
     for my $cS(@XMArr){
 	$noTrim = 1 if ($cS eq '^');
 	$noTrim = 0 if ($cS eq 'M');
@@ -754,9 +755,9 @@ sub trimXM{
 	$retStr .= $cS ;
 	last if ($nGood == $XMOKsz);
     }
-    
+
     $retStr = reverse($retStr) if ($side eq 'left');
-    
+
     return str2XM($retStr);
 }
 

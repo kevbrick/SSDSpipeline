@@ -41,9 +41,9 @@ while [[ $# -gt 1 ]]
 		# unknown option
 		;;
 	esac
-	
+
 	shift # past argument or value
-	
+
 done
 
 echo INSTALL PATH    = "${INSTALLPATH}"
@@ -58,7 +58,7 @@ if [ "$iOwner" = "root" ]
 then
 	echo "##### WARNING ##### : Installation folder ["$INSTALLPATH"] is only writable by root user"
 	sleep 3
-fi	
+fi
 
 ## Create Installation Folder
 mkdir -p $INSTALLPATH || exit 1
@@ -103,7 +103,7 @@ then
 	chown -R $SUDO_USER $INSTALLPATH || exit 1
 fi
 
-# Check install dir 
+# Check install dir
 RUNDIR=$INSTALLPATH
 TSTFILE=$RUNDIR'/run_ssDNAPipeline'
 if [ -f $TSTFILE ]; then
@@ -116,8 +116,11 @@ else
 fi
 
 ## Get packages
-apt-get install -y default-jre zlib1g-dev bioperl || exit 1
- 
+#apt-get install -y default-jre zlib1g-dev bioperl || exit 1
+## KB 07-24-19: Added some pkgs not in default Ubuntu 18+ distros
+apt-get install -y make libncurses5 libncurses5-dev build-essential default-jre zlib1g-dev bioperl || exit 1
+
+
 ## Get perl modules
 export PERL_MM_USE_DEFAULT=1
 cpan File::Temp || exit 1
@@ -133,7 +136,7 @@ perl $RUNDIR/Bio-SamTools-1.43/INSTALL.pl
 for thisBASHRC in `find /home -maxdepth 2 -name '.bashrc'` '/root/.bashrc'; do
 	cp $thisBASHRC $thisBASHRC\.SSDSpipeline.bak || exit 1
 	grep -vP '##SSDSPIPELINE_ENVIRONMENT_VARS' $thisBASHRC\.SSDSpipeline.bak >$thisBASHRC ||exit 1
-	
+
 	echo '##SSDSPIPELINE_ENVIRONMENT_VARS' >>$thisBASHRC || exit 1
 	echo 'export SSDSPIPELINEPATH='$RUNDIR' ##SSDSPIPELINE_ENVIRONMENT_VARS' >>$thisBASHRC || exit 1
 	echo 'export SSDSPICARDPATH='$RUNDIR'/picard-tools-2.3.0 ##SSDSPIPELINE_ENVIRONMENT_VARS' >>$thisBASHRC || exit 1
@@ -178,8 +181,8 @@ resetOwnership () {
 	fi
 }
 
-resetOwnership $iOwner $INSTALLPATH 
-resetOwnership $gOwner $GENOMESPATH 
+resetOwnership $iOwner $INSTALLPATH
+resetOwnership $gOwner $GENOMESPATH
 
 ## Run tests
 su $SUDO_USER -c 'sh $SSDSPIPELINEPATH/unitTest/runTest.sh' || exit 1
